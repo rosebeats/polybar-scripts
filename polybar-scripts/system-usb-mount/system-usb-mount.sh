@@ -1,10 +1,10 @@
 #!/bin/sh
 
-devices=$(lsblk -Jplno NAME,TYPE,RM,SIZE,MOUNTPOINT,VENDOR)
+devices=$(lsblk -Jplno NAME,TYPE,RM,SIZE,MOUNTPOINT,VENDOR,LABEL,MODEL)
 
 case "$1" in
     --mount)
-        for mount in $(echo "$devices" | jq -r '.blockdevices[]  | select(.type == "part") | select(.rm == "1") | select(.mountpoint == null) | .name'); do
+        for mount in $(echo "$devices" | jq -r '.blockdevices[]  | select(.type == "part") | select(.rm == true) | select(.mountpoint == null) | .name'); do
             udisksctl mount --no-user-interaction -b "$mount"
 
             # mountpoint=$(udisksctl mount --no-user-interaction -b $mount)
@@ -13,7 +13,7 @@ case "$1" in
         done
         ;;
     --unmount)
-        for unmount in $(echo "$devices" | jq -r '.blockdevices[]  | select(.type == "part") | select(.rm == "1") | select(.mountpoint != null) | .name'); do
+        for unmount in $(echo "$devices" | jq -r '.blockdevices[]  | select(.type == "part") | select(.rm == true) | select(.mountpoint != null) | .name'); do
             udisksctl unmount --no-user-interaction -b "$unmount"
             udisksctl power-off --no-user-interaction -b "$unmount"
         done
@@ -22,10 +22,14 @@ case "$1" in
         output=""
         counter=0
 
-        for unmounted in $(echo "$devices" | jq -r '.blockdevices[]  | select(.type == "part") | select(.rm == "1") | select(.mountpoint == null) | .name'); do
-            unmounted=$(echo "$unmounted" | tr -d "[:digit:]")
-            unmounted=$(echo "$devices" | jq -r '.blockdevices[]  | select(.name == "'"$unmounted"'") | .vendor')
-            unmounted=$(echo "$unmounted" | tr -d ' ')
+        for unmounted in $(echo "$devices" | jq -r '.blockdevices[]  | select(.type == "part") | select(.rm == true) | select(.mountpoint == null) | .name'); do
+            unmounted1=$(echo "$devices" | jq -r '.blockdevices[]  | select(.name == "'"$unmounted"'") | .label')
+	    if [ $unmounted1 = 'null' ]
+            then
+                unmounted=$(echo "$unmounted" | tr -d "[:digit:]")
+                unmounted1=$(echo "$devices" | jq -r '.blockdevices[]  | select(.name == "'"$unmounted"'") | .model')
+	    fi
+            unmounted=$(echo "$unmounted1" | tr -d ' ')
 
             if [ $counter -eq 0 ]; then
                 space=""
@@ -34,10 +38,10 @@ case "$1" in
             fi
             counter=$((counter + 1))
 
-            output="$output$space#1 $unmounted"
+            output="$output$space  $unmounted"
         done
 
-        for mounted in $(echo "$devices" | jq -r '.blockdevices[] | select(.type == "part") | select(.rm == "1") | select(.mountpoint != null) | .size'); do
+        for mounted in $(echo "$devices" | jq -r '.blockdevices[] | select(.type == "part") | select(.rm == true) | select(.mountpoint != null) | .size'); do
             if [ $counter -eq 0 ]; then
                 space=""
             else
@@ -45,7 +49,7 @@ case "$1" in
             fi
             counter=$((counter + 1))
 
-            output="$output$space#2 $mounted"
+            output="$output$spaceﱮ $mounted"
         done
 
         echo "$output"
