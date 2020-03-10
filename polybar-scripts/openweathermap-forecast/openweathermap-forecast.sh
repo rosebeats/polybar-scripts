@@ -24,7 +24,7 @@ get_icon() {
     echo $icon
 }
 
-KEY="$(cat key)"
+KEY="$(cat ~/weatherkey)"
 CITY=""
 UNITS="imperial"
 SYMBOL="°"
